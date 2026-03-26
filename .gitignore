@@ -1,0 +1,16 @@
+# Compiled C Executables
+cloud_setup
+cloud_server
+pi_client
+*.exe
+
+# Keys and Payloads
+*.bin
+*.jpg
+*.jpeg
+*.png
+
+# Python
+__pycache__/
+venv/
+.env
