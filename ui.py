@@ -1,80 +1,97 @@
+import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import subprocess
 import os
+import shutil
 
-# -------- Functions --------
+# Set appearance mode and color theme
+ctk.set_appearance_mode("Dark")
+ctk.set_default_color_theme("green")
 
-def select_image():
-    file_path = filedialog.askopenfilename(
-        filetypes=[("Image Files", "*.jpg *.png *.jpeg")]
-    )
-    if file_path:
-        entry.delete(0, tk.END)
-        entry.insert(0, file_path)
-def send_image():
-    image_path = entry.get()
+class App(ctk.CTk):
+    def __init__(self):
+        super().__init__()
 
-    if not os.path.exists(image_path):
-        messagebox.showerror("Error", "Invalid file path")
-        return
+        self.title("Secure Image Transfer (PQC)")
+        self.geometry("500x250")
 
-    try:
-        # Only copy if different file
-        if os.path.abspath(image_path) != os.path.abspath("capture.jpg"):
-            os.system(f"cp '{image_path}' capture.jpg")
+        # Create main frame
+        self.main_frame = ctk.CTkFrame(self, corner_radius=15)
+        self.main_frame.pack(pady=20, padx=20, fill="both", expand=True)
 
-        result = subprocess.run(["./pi_client"], capture_output=True, text=True)
+        # Title Label
+        self.title_label = ctk.CTkLabel(
+            self.main_frame,
+            text="Kyber Secure Image Transfer",
+            font=ctk.CTkFont(size=20, weight="bold")
+        )
+        self.title_label.pack(pady=(20, 15))
 
-        if result.returncode == 0:
-            messagebox.showinfo("Success", "Image Sent Successfully!")
-        else:
-            messagebox.showerror("Error", result.stderr)
+        # Input Frame (for Entry and Browse btn)
+        self.input_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.input_frame.pack(pady=10, fill="x", padx=20)
 
-    except Exception as e:
-        messagebox.showerror("Error", str(e))
-def send_image():
-    image_path = entry.get()
+        self.entry = ctk.CTkEntry(
+            self.input_frame,
+            placeholder_text="Select an image file...",
+            width=280,
+            height=35
+        )
+        self.entry.pack(side="left", padx=(0, 10))
 
-    if not os.path.exists(image_path):
-        messagebox.showerror("Error", "Invalid file path")
-        return
+        self.browse_btn = ctk.CTkButton(
+            self.input_frame,
+            text="Browse",
+            width=80,
+            height=35,
+            command=self.select_image
+        )
+        self.browse_btn.pack(side="left")
 
-    try:
-        # Copy selected image as capture.jpg
-        os.system(f"cp '{image_path}' capture.jpg")
+        # Send Button
+        self.send_btn = ctk.CTkButton(
+            self.main_frame,
+            text="Send Image",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            height=40,
+            command=self.send_image
+        )
+        self.send_btn.pack(pady=(15, 20))
 
-        # Run client
-        result = subprocess.run(["./pi_client"], capture_output=True, text=True)
+    def select_image(self):
+        file_path = filedialog.askopenfilename(
+            filetypes=[("Image Files", "*.jpg *.png *.jpeg")]
+        )
+        if file_path:
+            self.entry.delete(0, tk.END)
+            self.entry.insert(0, file_path)
 
-        if result.returncode == 0:
-            messagebox.showinfo("Success", "Image Sent Successfully!")
-        else:
-            messagebox.showerror("Error", result.stderr)
+    def send_image(self):
+        image_path = self.entry.get()
 
-    except Exception as e:
-        messagebox.showerror("Error", str(e))
+        if not os.path.exists(image_path):
+            messagebox.showerror("Error", "Invalid file path")
+            return
 
+        try:
+            # Safely copy image using cross-platform shutil instead of os.system("cp")
+            dest_path = "capture.jpg"
+            if os.path.abspath(image_path) != os.path.abspath(dest_path):
+                shutil.copy(image_path, dest_path)
 
-# -------- UI --------
+            # Run client
+            executable = "./pi_client"
+            result = subprocess.run([executable], capture_output=True, text=True)
 
-root = tk.Tk()
-root.title("Secure Image Transfer (PQC)")
-root.geometry("400x200")
+            if result.returncode == 0:
+                messagebox.showinfo("Success", "Image Sent Successfully!")
+            else:
+                messagebox.showerror("Error", result.stderr if result.stderr else "Unknown error occurred")
 
-title = tk.Label(root, text="Kyber Secure Image Transfer", font=("Arial", 14))
-title.pack(pady=10)
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
 
-frame = tk.Frame(root)
-frame.pack(pady=10)
-
-entry = tk.Entry(frame, width=30)
-entry.pack(side=tk.LEFT, padx=5)
-
-browse_btn = tk.Button(frame, text="Browse", command=select_image)
-browse_btn.pack(side=tk.LEFT)
-
-send_btn = tk.Button(root, text="Send Image", command=send_image, bg="green", fg="white")
-send_btn.pack(pady=20)
-
-root.mainloop()
+if __name__ == "__main__":
+    app = App()
+    app.mainloop()
