@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
+#include <string.h>
 
 int send_all(int sock, uint8_t *buffer, int length) {
     int total = 0, bytes;
