@@ -37,9 +37,19 @@ int main() {
     fclose(f);
 
     uint8_t *ct = malloc(kem->length_ciphertext);
-    uint8_t shared_secret[32]; // Kyber-512 shared secret is 32 bytes exactly, perfect for AES-256
+    
+    // FORENSICS LAB MODIFICATION: Wrap the AES key in a magic signature so students can find it in the RAM dump
+    struct {
+        char prefix[17];
+        uint8_t key[32]; // Kyber-512 shared secret is 32 bytes exactly, perfect for AES-256
+        char suffix[17];
+    } mem_target;
+    
+    // We explicitly place recognizable ASCII strings immediately before and after the raw AES key bytes in memory
+    sprintf(mem_target.prefix, "###AES_KEY_START");
+    sprintf(mem_target.suffix, "END_AES_KEY###");
 
-    if (OQS_KEM_encaps(kem, ct, shared_secret, pk) != OQS_SUCCESS) {
+    if (OQS_KEM_encaps(kem, ct, mem_target.key, pk) != OQS_SUCCESS) {
         printf("Encapsulation failed\n");
         free(pk); free(ct); OQS_KEM_free(kem);
         return 1;
@@ -96,7 +106,7 @@ int main() {
     uint8_t *cipher_data = malloc(cipher_len);
     int len1, len2;
 
-    EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, shared_secret, iv);
+    EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, mem_target.key, iv);
     EVP_EncryptUpdate(ctx, cipher_data, &len1, plain_data, plain_size);
     EVP_EncryptFinal_ex(ctx, cipher_data + len1, &len2);
     EVP_CIPHER_CTX_free(ctx);
@@ -115,7 +125,15 @@ int main() {
 
     printf("Image encrypted and sent securely!\n");
 
+    // FORENSICS LAB MODIFICATION: Pause the program so students have time to capture the RAM dump
+    printf("\n[FORENSICS LAB] The AES-256 Key is currently fully loaded in RAM.\n");
+    printf("[FORENSICS LAB] Investigators: Take your Live Memory Dump (Volatility/WinPmem) NOW.\n");
+    printf("[FORENSICS LAB] Press ENTER to close the program and wipe the RAM...\n");
+    getchar();
+
 end:
+    // Securely wipe the key from memory so it cannot be recovered after the program closes
+    memset(&mem_target, 0, sizeof(mem_target));
     free(plain_data);
     free(cipher_data);
     free(pk);
